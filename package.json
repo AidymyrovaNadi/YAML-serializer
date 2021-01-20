@@ -1,0 +1,22 @@
+{
+  "name": "yaml_ser",
+  "version": "1.0.0",
+  "description": "YAML serializer",
+  "main": "YAMLstringifying.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AidymyrovaNadi/serializers.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AidymyrovaNadi/serializers/issues"
+  },
+  "homepage": "https://github.com/AidymyrovaNadi/serializers#readme",
+  "devDependencies": {
+    "mocha": "^8.2.1"
+  }
+}
