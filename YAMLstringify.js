@@ -1,14 +1,23 @@
 'use strict';
 
 class YAML {
-    static stringify(value, replacer, space, key) {
+    stringify = (value, replacer, space) => {
         const serializer = this.serializers[this.checkType(value)];
         if (!!serializer) {
-            if (!replacer) return serializer(value, key);
+          if (replacer instanceof Function) this.replacer = replacer;
+          if (Array.isArray(replacer)) return this.serialize(value);
+
+          return this.serialize(value, undefined, this.space)
         }
     }
 
-    static checkType(obj) {
+    serialize = (value, key, prefix, postfix) => {
+      const replaced = this.replacer ? this.replacer(key, value) : value;
+      const serializer = this.serializers[this.checkType(replaced)];
+      if (!!serializer) return serializer(replaced, key, prefix, postfix);
+  }
+
+    checkType = (obj) => {
         const type = typeof obj;
         if (type === 'string') return 'string';
         if (type === 'number') return 'number';
@@ -21,7 +30,7 @@ class YAML {
         if (obj !== null) return 'object';
     }
 
-    static serializers = {
+    serializers = {
         string: s => {
             if (s.includes('\n')) {
                 const res = `|\n  ${s.replace(/\n/g, '\n  ')}`;
@@ -71,7 +80,7 @@ class YAML {
         }
     }
 
-    static sortFields(a, b) {
+    sortFields = (a, b) => {
         const typeOfA = this.checkType(a[1]);
         const typeOfB = this.checkType(b[1]);
 
@@ -80,22 +89,6 @@ class YAML {
         if (typeOfB === 'object') return -1;
     }
 }
-
-const obj1 = {
-    name: "John",
-    surname: "pisos",
-    age: 123,
-    climax: {
-      jopa: "bolit",
-      pisos: "bolit",
-      rot: 1,
-      climaxsa: {
-        jopa: "bolits",
-        pisos: "bolits",
-        rot: ["sss0", "sdfewwwww", 3322]
-      }
-    }
-};
 
 const obj2 = {
     "json": [
@@ -153,10 +146,8 @@ const obj2 = {
     }
 };
 
-const string1 = `"Hello"`;
-
 const Yaml = new YAML();
 
-console.log(Yaml.stringify(string1));
+console.log(Yaml.stringify(obj2));
 
 module.exports = Yaml;
