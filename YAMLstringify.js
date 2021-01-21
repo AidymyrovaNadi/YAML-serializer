@@ -40,21 +40,21 @@ class YAML {
                 const res = `${prefix + key}|\n  ${s.replace(/\n/g, '\n  ') + postfix}`;
                 return res;
             }
-            else return `  ${prefix + key + s + postfix}`;
+            else return `${prefix + key + s + postfix}`;
         },
-        number: (n, key = '', prefix = '', postfix = '') => prefix + '  ' + key + n.toString() + postfix,
-        boolean: (b, key = '', prefix = '', postfix = '') => prefix + '  ' + key + b.toString() + postfix,
+        number: (n, key = '', prefix = '', postfix = '') => prefix + key + n.toString() + postfix,
+        boolean: (b, key = '', prefix = '', postfix = '') => prefix + key + b.toString() + postfix,
         date: (d, key = '', prefix = '', postfix = '') => prefix + key + d.toString() + postfix,
         array: (a, key = '', prefix = '', postfix = '') => {
           const mapped = a.map(obj => this.serialize(obj)).join('\n  - ');
           return `${prefix}${key}\n  - ${mapped}${postfix}`;
         },
         arrayObject: (a, key, prefix = '', postfix = '') => {
-          const mapped = a.map(obj => this.serialize(obj)).join('  - '); //`${this.serialize(obj, key, `${prefix}`, `${postfix}`)}`).join('  ');
+          const mapped = a.map(obj => this.serialize(obj)).join('  - ');
           return `${prefix}${key}:\n  - ${mapped}${postfix}`;
         },
         object: (o, prev, prefix = '', postfix = '') => {
-            let s = prev ? `${prefix}${prev}${postfix}` : '';
+            let s = prev ? `${prefix}${prev}:${postfix}` : '';
 
             const sortedObj = Object.entries(o).sort((a, b) => { 
                 return this.sortFields(a, b); 
@@ -67,10 +67,10 @@ class YAML {
                 const space = this.additionalSpace(prefix);
 
                 if (type === 'object') {
-                  s += this.serialize(value, combinatedKey, space, ':\n');
+                  s += this.serialize(value, combinatedKey, space, '\n  ');
                 }
                 if (type === 'arrayObject') {
-                  s += this.serialize(value, combinatedKey, space, ':\n');
+                  s += this.serialize(value, combinatedKey, space, '\n');
                 }
                 else {
                   s += this.serialize(value, `${key}: `, space, '\n')
@@ -91,7 +91,7 @@ class YAML {
 
     additionalSpace(prefix) {
       const type = this.checkType(this.space);
-      let s = '  ';
+      let s = '';
       let length = prefix.length;
       if (type === 'number') {
           length = prefix.length + this.space;
@@ -104,47 +104,8 @@ class YAML {
   }
 }
 
-const obj2 = {
-    "json": [
-      "rigid",
-      "better for data interchange"
-    ],
-    "yaml": [
-      "slim and flexible",
-      "better for configuration"
-    ],
-    "array": [
-        {
-          "boolean": true
-        },
-        {
-          "integer": 1
-        },
-        {
-          "alias": "aliases are like variables"
-        },
-        {
-          "alias": "aliases are like variables"
-        }
-    ],
-    "object": {
-      "key1": "value1",
-      "cell": 343,
-      "hello": "world"
-    },
-    "paragraph": "Blank lines denote\nparagraph breaks",
-    "content": "Or we\ncan auto\nconvert line breaks\nto save space",
-    "alias": {
-      "bar": "baz"
-    },
-    "alias_reuse": {
-      "bar": "baz"
-    }
-};
 
 const Yaml = new YAML();
-const string1 = "Blank lines denote\nparagraph breaks";
 
-console.log(Yaml.stringify(obj2));
 
 module.exports = Yaml;
