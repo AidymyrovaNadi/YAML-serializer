@@ -2,27 +2,31 @@
 
 class YAML {
     stringify = (value, replacer, space) => {
-        const serializer = this.serializers[this.checkType(value)];
-        if (!!serializer) {
-          if (replacer instanceof Function) this.replacer = replacer;
-          if (Array.isArray(replacer)) return this.serialize(value);
-
-          return this.serialize(value, undefined, this.space)
-        }
+      this.space = space;
+      if (replacer instanceof Function) this.replacer = replacer;
+      if (Array.isArray(replacer)) {
+          const filtered = replacer.reduce((acc, val) => {
+              acc[val] = value[val];
+              return acc;
+          }, {});
+          return this.serialize(filtered);
+      }
+      return this.serialize(value);
     }
+    
 
     serialize = (value, key, prefix, postfix) => {
       const replaced = this.replacer ? this.replacer(key, value) : value;
       const serializer = this.serializers[this.checkType(replaced)];
       if (!!serializer) return serializer(replaced, key, prefix, postfix);
-  }
+    }
 
     checkType = (obj) => {
         const type = typeof obj;
         if (type === 'string') return 'string';
         if (type === 'number') return 'number';
         if (type === 'boolean') return 'boolean';
-        if (type instanceof Function) return 'function';
+        if (type instanceof Date) return 'date';
         if (Array.isArray(obj)) {
             if (this.checkType(obj[0]) === 'object') return 'arrayObject';
             else return 'array';
@@ -31,63 +35,73 @@ class YAML {
     }
 
     serializers = {
-        string: s => {
-            if (s.includes('\n')) {
-                const res = `|\n  ${s.replace(/\n/g, '\n  ')}`;
+        string: (s, key = '', prefix = '', postfix = '') => {
+            if (key && s.includes('\n')) {
+                const res = `${prefix + key}|\n  ${s.replace(/\n/g, '\n  ') + postfix}`;
                 return res;
             }
-            else return `${s}`;
+            else return `  ${prefix + key + s + postfix}`;
         },
-        number: n => n.toString(),
-        boolean: b => b.toString(),
-        function: f => f.toString(),
-        array: a => {
-            let s = '';
-            const sortedArr = a.entries();
-            for (const [key, value] of sortedArr) {
-                s += `\n  - ${this.stringify(value, undefined, undefined, key)}`;
-            }
-            return s;
+        number: (n, key = '', prefix = '', postfix = '') => prefix + '  ' + key + n.toString() + postfix,
+        boolean: (b, key = '', prefix = '', postfix = '') => prefix + '  ' + key + b.toString() + postfix,
+        date: (d, key = '', prefix = '', postfix = '') => prefix + key + d.toString() + postfix,
+        array: (a, key = '', prefix = '', postfix = '') => {
+          const mapped = a.map(obj => this.serialize(obj)).join('\n  - ');
+          return `${prefix}${key}\n  - ${mapped}${postfix}`;
         },
-        object: o => {
-            let s = '';
+        arrayObject: (a, key, prefix = '', postfix = '') => {
+          const mapped = a.map(obj => this.serialize(obj)).join('  - '); //`${this.serialize(obj, key, `${prefix}`, `${postfix}`)}`).join('  ');
+          return `${prefix}${key}:\n  - ${mapped}${postfix}`;
+        },
+        object: (o, prev, prefix = '', postfix = '') => {
+            let s = prev ? `${prefix}${prev}${postfix}` : '';
 
             const sortedObj = Object.entries(o).sort((a, b) => { 
                 return this.sortFields(a, b); 
             });
 
             for (const [key, value] of sortedObj) {
-
-                if (s.length > 1) s += '\n';
                 const type = this.checkType(value);
 
-                if (type === "object") {
-                    s += `${key}: \n  ${this.stringify(value, undefined, undefined, key)}`;
-                    const subObjest = Object.create(value);
+                const combinatedKey = prev ? `${prev}.${key}` : key;
+                const space = this.additionalSpace(prefix);
 
-                    const sortedSubObj = Object.entries(subObjest).sort((a, b) => { 
-                        return this.sortFields(a, b); 
-                    });
-
-                    for (const [key, value] of sortedSubObj) {
-                        s += `  ${key}: ${this.stringify(value, undefined, undefined, key)}`;
-                    }
+                if (type === 'object') {
+                  s += this.serialize(value, combinatedKey, space, ':\n');
                 }
-                
-                else s += `${key}: ${this.stringify(value, undefined, undefined, key)}`;
+                if (type === 'arrayObject') {
+                  s += this.serialize(value, combinatedKey, space, ':\n');
+                }
+                else {
+                  s += this.serialize(value, `${key}: `, space, '\n')
+                }
             }
             return s;
         }
     }
 
     sortFields = (a, b) => {
-        const typeOfA = this.checkType(a[1]);
-        const typeOfB = this.checkType(b[1]);
+        const typeOfA = this.checkType(a[0]);
+        const typeOfB = this.checkType(b[0]);
 
         if (typeOfA === typeOfB) return 0;
         if (typeOfA === 'object') return 1;
         if (typeOfB === 'object') return -1;
     }
+
+    additionalSpace(prefix) {
+      const type = this.checkType(this.space);
+      let s = '  ';
+      let length = prefix.length;
+      if (type === 'number') {
+          length = prefix.length + this.space;
+      }
+      if (type === 'string') {
+          s = this.space;
+          length = prefix.length + this.space.length;
+      }
+      return s.repeat(length);
+  }
 }
 
 const obj2 = {
@@ -100,9 +114,6 @@ const obj2 = {
       "better for configuration"
     ],
     "array": [
-        {
-          "null_value": null
-        },
         {
           "boolean": true
         },
@@ -117,26 +128,11 @@ const obj2 = {
         }
     ],
     "object": {
-      "key": "value"
-    //   "array": [
-    //     {
-    //       "null_value": null
-    //     },
-    //     {
-    //       "boolean": true
-    //     },
-    //     {
-    //       "integer": 1
-    //     },
-    //     {
-    //       "alias": "aliases are like variables"
-    //     },
-    //     {
-    //       "alias": "aliases are like variables"
-    //     }
-    //   ]
+      "key1": "value1",
+      "cell": 343,
+      "hello": "world"
     },
-    "paragraph": "Blank lines denote\nparagraph breaks\n",
+    "paragraph": "Blank lines denote\nparagraph breaks",
     "content": "Or we\ncan auto\nconvert line breaks\nto save space",
     "alias": {
       "bar": "baz"
@@ -147,6 +143,7 @@ const obj2 = {
 };
 
 const Yaml = new YAML();
+const string1 = "Blank lines denote\nparagraph breaks";
 
 console.log(Yaml.stringify(obj2));
 
